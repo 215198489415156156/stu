@@ -13,10 +13,14 @@
         }
         #qrcode-container {
             position: relative;
+            max-width: 300px; /* 控制容器的最大宽度 */
+            margin: 0 auto; /* 居中显示 */
+            overflow: hidden; /* 防止溢出 */
         }
         #qrcode {
-            max-width: 80%;
-            height: auto;
+            width: 200px; /* 固定图片宽度 */
+            height: 200px; /* 固定图片高度 */
+            object-fit: cover; /* 保证图片不变形 */
             border: 1px solid #ddd;
             padding: 4px;
             border-radius: 8px;
@@ -31,12 +35,30 @@
             margin-top: 10px;
             font-size: 14px;
         }
+        /* 左右箭头样式 */
+        .arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 30px;
+            color: #333;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .arrow-left {
+            left: -40px;
+        }
+        .arrow-right {
+            right: -40px;
+        }
     </style>
 </head>
 <body>
     <h1>欢迎扫码加入微信群</h1>
     <div id="qrcode-container">
+        <span class="arrow arrow-left" id="prev-arrow">&#8592;</span>
         <img id="qrcode" src="" alt="群二维码">
+        <span class="arrow arrow-right" id="next-arrow">&#8594;</span>
         <div class="note">如二维码已失效或加入人数已满，请等待自动切换或刷新页面。</div>
     </div>
 
@@ -45,10 +67,10 @@
         const images = [
             'codes/qrcode1.jpeg',
             'codes/qrcode2.jpeg',
-            'codes/qrcode3.jpeg'
-            'codes/qrcode4.jpeg'
-            'codes/qrcode5.jpeg'
-            'codes/qrcode6.jpeg'
+            'codes/qrcode3.jpeg',
+            'codes/qrcode4.jpeg',
+            'codes/qrcode5.jpeg',
+            'codes/qrcode6.jpeg',
             'codes/qrcode7.jpeg'
             // 在此添加更多图片路径，例如：'codes/qrcode4.png'
         ];
@@ -56,6 +78,8 @@
         let currentIndex = 0;
         const intervalTime = 10000; // 每10秒切换一次
         const qrcodeElement = document.getElementById('qrcode');
+        const prevArrow = document.getElementById('prev-arrow');
+        const nextArrow = document.getElementById('next-arrow');
 
         // 初始化显示第一张图片
         if (images.length > 0) {
@@ -83,6 +107,17 @@
 
         // 启动轮播
         startSlideshow();
+
+        // 手动切换二维码
+        prevArrow.addEventListener('click', function() {
+            currentIndex = (currentIndex - 1 + images.length) % images.length; // 向前切换
+            qrcodeElement.src = images[currentIndex];
+        });
+
+        nextArrow.addEventListener('click', function() {
+            currentIndex = (currentIndex + 1) % images.length; // 向后切换
+            qrcodeElement.src = images[currentIndex];
+        });
     </script>
 </body>
 </html>
