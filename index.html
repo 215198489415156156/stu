@@ -1,0 +1,136 @@
+<?php
+// index.php
+// 改良后的活码系统，支持前端自动轮播二维码图片，并保留7天自动切换逻辑
+
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+$codesDir = __DIR__ . '/codes';
+$currentFile = __DIR__ . '/current.json';
+
+// 创建目录（如果不存在）
+if (!is_dir($codesDir)) {
+    mkdir($codesDir, 0777, true);
+}
+
+// 如果还没有 current.json，则尝试把第一个二维码作为默认
+if (!file_exists($currentFile)) {
+    $files = glob($codesDir . '/*.{png,jpg,jpeg,gif}', GLOB_BRACE);
+    if ($files) {
+        $first = basename($files[0]);
+        file_put_contents($currentFile, json_encode([
+            'current' => $first,
+            'last_update' => time(),
+        ]));
+    }
+}
+
+// 读取当前二维码信息
+$data = [];
+$current = '';
+if (file_exists($currentFile)) {
+    $data = json_decode(file_get_contents($currentFile), true);
+    if (is_array($data) && isset($data['current'])) {
+        $current = $data['current'];
+    }
+}
+
+// 自动轮播逻辑：每7天更新一次
+$rotationDays = 7;
+$rotationInterval = $rotationDays * 24 * 60 * 60; // 秒数
+$lastUpdate = isset($data['last_update']) ? (int)$data['last_update'] : 0;
+if (time() - $lastUpdate >= $rotationInterval) {
+    $files = glob($codesDir . '/*.{png,jpg,jpeg,gif}', GLOB_BRACE);
+    sort($files);
+    if ($files) {
+        $basenames = array_map('basename', $files);
+        $currentIndex = array_search($current, $basenames);
+        if ($currentIndex === false) {
+            $currentIndex = 0;
+        } else {
+            $currentIndex = ($currentIndex + 1) % count($basenames);
+        }
+        $nextCode = $basenames[$currentIndex];
+        $data['current'] = $nextCode;
+        $data['last_update'] = time();
+        file_put_contents($currentFile, json_encode($data));
+        $current = $nextCode;
+    }
+}
+
+// 获取所有二维码图片路径，用于前端轮播
+$imagePaths = [];
+$files = glob($codesDir . '/*.{png,jpg,jpeg,gif}', GLOB_BRACE);
+if ($files) {
+    sort($files);
+    foreach ($files as $file) {
+        $imagePaths[] = 'codes/' . basename($file);
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信群活码</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f4f4f4;
+        }
+        img {
+            max-width: 80%;
+            height: auto;
+            border: 1px solid #ddd;
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .note {
+            color: #888;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .carousel {
+            max-width: 400px;
+            margin: 0 auto;
+            position: relative;
+        }
+        #qrcodeImage {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>欢迎扫码加入微信群</h1>
+    <div class="carousel">
+        <?php if (!empty($imagePaths)): ?>
+            <img id="qrcodeImage" src="<?php echo htmlspecialchars($imagePaths[0], ENT_QUOTES, 'UTF-8'); ?>" alt="群二维码">
+            <div class="note">如二维码已失效或加入人数已满，请等待自动切换或刷新页面。</div>
+        <?php else: ?>
+            <p>当前没有可用的群二维码，请联系管理员更新。</p>
+        <?php endif; ?>
+    </div>
+
+    <?php if (!empty($imagePaths)): ?>
+        <script>
+            const images = <?php echo json_encode($imagePaths); ?>;
+            let currentIndex = 0;
+            const qrcodeImage = document.getElementById('qrcodeImage');
+
+            function changeImage() {
+                currentIndex = (currentIndex + 1) % images.length;
+                qrcodeImage.src = images[currentIndex];
+            }
+
+            // 每5秒切换一张图片（可调整）
+            setInterval(changeImage, 5000);
+        </script>
+    <?php endif; ?>
+</body>
+</html>
